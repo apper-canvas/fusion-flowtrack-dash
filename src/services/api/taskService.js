@@ -1,5 +1,6 @@
-import { getApperClient } from "@/services/apperClient";
 import { toast } from "react-toastify";
+import React from "react";
+import { getApperClient } from "@/services/apperClient";
 
 const TABLE_NAME = 'task_c';
 
@@ -20,7 +21,7 @@ export const taskService = {
           {"field": {"Name": "description_c"}},
           {"field": {"Name": "priority_c"}},
           {"field": {"Name": "status_c"}},
-          {"field": {"Name": "createdAt_c"}},
+{"field": {"Name": "createdAt_c"}},
           {"field": {"Name": "completedAt_c"}}
         ],
         orderBy: [{"fieldName": "createdAt_c", "sorttype": "DESC"}],
@@ -62,7 +63,7 @@ export const taskService = {
           {"field": {"Name": "description_c"}},
           {"field": {"Name": "priority_c"}},
           {"field": {"Name": "status_c"}},
-          {"field": {"Name": "createdAt_c"}},
+{"field": {"Name": "createdAt_c"}},
           {"field": {"Name": "completedAt_c"}}
         ]
       };
@@ -89,7 +90,7 @@ export const taskService = {
         throw new Error("ApperClient not initialized");
       }
 
-      // Only include updateable fields
+// Only include updateable fields
       const createData = {
         title_c: taskData.title || taskData.title_c,
         description_c: taskData.description || taskData.description_c,
@@ -142,7 +143,82 @@ export const taskService = {
     }
   },
 
-  async update(id, updates) {
+// Create task with files
+export const createTaskWithFiles = async (taskData, files = []) => {
+  try {
+    // First create the task
+const createdTask = await taskService.create(taskData);
+    
+    if (!createdTask) {
+      throw new Error("Failed to create task");
+    }
+    
+    // If no files, return the created task
+    if (!files || files.length === 0) {
+      toast.success("Task created successfully!");
+      return createdTask;
+    }
+    
+    // Create file records linked to the task
+    const fileRecords = files.map(file => ({
+      // Only include Updateable fields for file_c table
+      Name: file.name || `Attachment-${Date.now()}`,
+      task_c: parseInt(createdTask.Id), // Link to created task
+      file_data_c: file, // The actual file data
+      upload_date_c: new Date().toISOString(),
+      file_size_kb_c: file.size ? Math.ceil(file.size / 1024) : 0,
+      description_c: `Attached to task: ${createdTask.title_c || createdTask.Name}`
+    }));
+    
+    const fileParams = {
+      records: fileRecords
+    };
+    
+    const { ApperClient } = window.ApperSDK;
+    const apperClient = new ApperClient({
+      apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+      apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+    });
+    
+    const fileResponse = await apperClient.createRecord('file_c', fileParams);
+    
+    if (!fileResponse.success) {
+      console.error("File creation failed:", fileResponse.message);
+      toast.error(`Task created but file upload failed: ${fileResponse.message}`);
+      return createdTask;
+    }
+    
+    if (fileResponse.results) {
+      const successfulFiles = fileResponse.results.filter(r => r.success);
+      const failedFiles = fileResponse.results.filter(r => !r.success);
+      
+      if (failedFiles.length > 0) {
+        console.error(`Failed to create ${failedFiles.length} files:`, failedFiles);
+        failedFiles.forEach(record => {
+          record.errors?.forEach(error => toast.error(`File upload error - ${error.fieldLabel}: ${error}`));
+          if (record.message) toast.error(`File upload error: ${record.message}`);
+        });
+      }
+      
+      if (successfulFiles.length > 0) {
+        toast.success(`Task created successfully with ${successfulFiles.length} file(s) attached!`);
+      } else {
+        toast.success("Task created successfully!");
+      }
+    }
+    
+    return createdTask;
+    
+  } catch (error) {
+    console.error("Error creating task with files:", error?.response?.data?.message || error);
+    toast.error("Failed to create task with attachments");
+    return null;
+  }
+};
+
+async update(id, updates) {
+
+try {
     try {
       const apperClient = getApperClient();
       
