@@ -34,13 +34,13 @@ const TaskForm = ({ onAddTask }) => {
     setIsSubmitting(true)
     
     try {
-      await onAddTask({
-        title: title.trim(),
-        description: description.trim(),
-        priority,
-        status: "active",
-        createdAt: new Date().toISOString(),
-        completedAt: null
+await onAddTask({
+        title_c: title.trim(),
+        description_c: description.trim(),
+        priority_c: priority,
+        status_c: "active",
+        createdAt_c: new Date().toISOString(),
+        completedAt_c: null
       })
       
       // Reset form
